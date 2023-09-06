@@ -12,7 +12,7 @@ class UserService extends Service {
     const { password: _, ...result } = resultinfo.toJSON()
     return result
   }
-  async create({ username, email, password, phone, avatar_url }) {
+  async create({ username, email, password, avatar_url }) {
     // 检查邮箱是否已经被注册
     const existingUserByemail = await this.isEmailRegistered(email)
     if (existingUserByemail) {
@@ -32,7 +32,6 @@ class UserService extends Service {
       username,
       email,
       password,
-      phone,
       avatar_url
     })
 
@@ -81,7 +80,7 @@ class UserService extends Service {
     // 返回用户信息和 token
     return { userObject, token }
   }
-  async update(id, { username, email, phone, password }) {
+  async update(id, { username, email, password }) {
     if (email) {
       // 检查邮箱是否已经被注册
       const existingUserByemail = await this.isEmailRegistered(email)
@@ -100,20 +99,11 @@ class UserService extends Service {
         throw err
       }
     }
-    if (phone) {
-      // 检查手机是否已经被注册
-      const existingUserByphone = await this.isPhoneRegistered(phone)
-      if (existingUserByphone) {
-        const err = new Error('手机号已被注册了')
-        err.status = 409
-        throw err
-      }
-    }
     if (password) {
       password = await this.ctx.hashPassword(password)
     }
     // 更新用户信息
-    const [affectedCount] = await this.ctx.model.User.update({ username, email, phone, password }, { where: { id } })
+    const [affectedCount] = await this.ctx.model.User.update({ username, email, password }, { where: { id } })
     if (affectedCount === 1) {
       // 更新成功，查询更新后的用户信息
       const updatedUser = await this.ctx.model.User.findOne({ where: { id } })
@@ -135,13 +125,6 @@ class UserService extends Service {
     const user = await ctx.model.User.findOne({ where: { email } })
     return !!user
   }
-  // 查询电话是不是已经被注册
-  async isPhoneRegistered(phone) {
-    const { ctx } = this
-    const user = await ctx.model.User.findOne({ where: { phone } })
-    return !!user
-  }
-
   async searchUsersByEmail(email) {
     // 在 User 模型中进行模糊查询
     const users = await this.ctx.model.User.findAll({
@@ -158,7 +141,7 @@ class UserService extends Service {
   async getUserById(userid) {
     const user = await this.ctx.model.User.findOne({
       where: { id: userid },
-      attributes: ['id', 'username', 'email', 'avatar_url', 'phone'] // 根据需要选择要返回的用户属性
+      attributes: ['id', 'username', 'email', 'avatar_url'] // 根据需要选择要返回的用户属性
     })
     console.log('user是', user)
     const result = user.toJSON()

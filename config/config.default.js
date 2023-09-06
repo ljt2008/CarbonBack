@@ -3,13 +3,13 @@
 /**
  * 默认的应用配置
  */
-
+const path = require('path')
 const { getLocalhost } = require('../app/extend/helper')
 
 module.exports = app => {
   const config = {}
 
-  // 配置服务器的域名
+  // 配置服务器的访问地址
   config.domainname = 'http://127.0.0.1:7001'
 
   /**
@@ -86,7 +86,10 @@ module.exports = app => {
     httpOnly: true,
     encrypt: true
   }
-
+  config.multipart = {
+    mode: 'file',
+    fileSize: '3000mb'// 设置上传文件的最大大小
+  }
   /**
    * 安全策略配置
    */
@@ -182,6 +185,12 @@ module.exports = app => {
         pass: 'edzfscpodgxnbiba'// 邮箱授权码，不是登录密码
       }
     }
+  }
+
+  // 配置定时任务
+  exports.schedule = {
+    enable: true,
+    package: 'egg-schedule'
   }
 
   return {

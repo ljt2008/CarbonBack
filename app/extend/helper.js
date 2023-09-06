@@ -4,7 +4,8 @@ const os = require('os')
 const { v4: uuidv4 } = require('uuid')
 const WechatCrypt = require('./wechatCrypt')
 const moment = require('moment')
-
+const fs = require('fs')
+const path = require('path')
 /**
  * 新旧接口兼容的版本号标识，有不兼容的代码时更新该版本号，主要为了应对审核以及通过 24h 内没有更新到最新版本的用户
  * 当需要发新版本时，用户已全部更新到最新版本，所以每次只要有不兼容的更新，只需要更新该版本号即可
@@ -149,11 +150,7 @@ module.exports = {
     }
 
   },
-  /**
-   * 参数异常
-   * @param {object} data 响应数据，可以是对象或者数组
-   * @param {string} message 提示信息
-   */
+
   error(code, message) {
     const { ctx } = this
     ctx.body = {
@@ -176,10 +173,102 @@ module.exports = {
   // 格式化时间
   formatTime(Time) {
     const { ctx } = this
-    // 将 time 格式化为标准格式
-    console.log(ctx.app.config.formatTimet)
     return moment(Time).format(ctx.app.config.formatTimet)
+  },
+  // 创建文件并写入到指定的目录 & 返回客户端结果
+  async writeFile(path, file, filename, stream) {
+    const { ctx } = this
+    return new Promise((resolve, reject) => {
+      if (stream) {
+        try {
+          const readStream = fs.createReadStream(file.filepath),
+            writeStream = fs.createWriteStream(path)
+          readStream.pipe(writeStream)
+          readStream.on('end', () => {
+            resolve()
+            // 不用删除 egg-mutiply每次请求完删除就好了
+            // fs.unlinkSync(file.filepath)
+            ctx.body = {
+              code: 0,
+              codeText: 'upload success',
+              originalFilename: filename,
+              servicePath: path.replace(ctx.app.baseDir + '/app/public/upload', ctx.app.config.domainname + '/public/upload')
+            }
+          })
+        } catch (err) {
+          reject(err)
+          ctx.body = {
+            code: 1,
+            codeText: err
+          }
+        }
+        return
+      }
+      fs.writeFile(path, file, err => {
+        if (err) {
+          ctx.body = {
+            code: 1,
+            codeText: err
+          }
+          reject(err)
+          return
+        }
+        ctx.body = {
+          code: 0,
+          codeText: 'upload success',
+          originalFilename: filename,
+          servicePath: path.replace(ctx.app.baseDir + '/app/public/upload', ctx.app.config.domainname + '/public/upload/')
+        }
+        resolve()
+      })
+    })
+  },
+  // 检测文件是否存在
+  async exists(path) {
+    return new Promise(resolve => {
+      fs.access(path, fs.constants.F_OK, err => {
+        if (err) {
+          resolve(false)
+          return
+        }
+        resolve(true)
+      })
+    })
+  },
+  // 合并文件
+  async merge(HASH, count) {
+    const { ctx } = this
+
+    return new Promise(async (resolve, reject) => {
+      // 文件目录在不在
+      const path = `${ctx.app.baseDir}/app/public/upload/${HASH}`
+      let fileList = []
+      let suffix
+      const isExists = await this.ctx.helper.exists(path)
+      if (!isExists) {
+        reject(new Error('HASH path is not found!'))
+        return
+      }
+      // fs.readdirSync() 是 Node.js 中的一个文件系统模块（fs）提供的同步方法，用于同步地读取指定目录下的文件和文件夹的名称列表。
+      fileList = fs.readdirSync(path)
+      if (fileList.length < count) {
+        reject(new Error('the slice has not been uploaded!'))
+        return
+      }
+      fileList.sort((a, b) => {
+        const reg = /_(\d+)/
+        return reg.exec(a)[1] - reg.exec(b)[1]
+      }).forEach(item => {
+        // 因为一开始不知道想合并成什么类型
+        !suffix ? suffix = /\.([0-9a-zA-Z]+)$/.exec(item)[1] : null
+        fs.appendFileSync(`${ctx.app.baseDir}/app/public/upload/${HASH}.${suffix}`, fs.readFileSync(`${path}/${item}`));
+        fs.unlinkSync(`${path}/${item}`)
+      })
+      fs.rmdirSync(path)
+      resolve({
+        path: `${ctx.app.baseDir}/app/public/upload/${HASH}.${suffix}`,
+        filename: `${HASH}.${suffix}`
+      })
+    })
   }
-
-
 }

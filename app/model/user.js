@@ -30,9 +30,6 @@ module.exports = app => {
       },
       avatar_url: {
         type: DataTypes.STRING(255)
-      },
-      phone: {
-        type: DataTypes.STRING(20)
       }
     },
     {
@@ -40,9 +37,6 @@ module.exports = app => {
       timestamps: false
     }
   )
-  User.associate = () => {
-    app.model.User.hasMany(app.model.Invite, { foreignKey: 'invitee_id' })
-  }
 
   return User
 }

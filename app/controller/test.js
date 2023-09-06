@@ -1,22 +1,16 @@
 'use strict'
-
 const Controller = require('egg').Controller
-/**
- * @controller Home模块
- */
-class TestController extends Controller {
+const path = require('path')
+const fs = require('fs')
+class UploadController extends Controller {
+    async avatar() {
+        const { ctx } = this
+        const file = ctx.request.files[0]
+    }
     async test1() {
-        const { service, helper, request, validate, rule, state } = this.ctx
-        const { project_id, projectname } = request.body
-        // 获取用户ID和请求参数
-        const userId = state.user.id
-        try {
-            const resultinfo = await service.members.validate_permissions(userId, project_id)
-            helper.success(resultinfo, '获取成功')
-        } catch (error) {
-            helper.error(error.status, error.message)
-        }
+        this.ctx.app.wss.clients.forEach(function (c) {
+            c.send(123)
+        })
     }
 }
-
-module.exports = TestController
+module.exports = UploadController
